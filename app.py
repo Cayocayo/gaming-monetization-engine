@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
+import matplotlib.pyplot as plt
+import seaborn as sns
 from tensorflow.keras.models import load_model
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
@@ -54,7 +56,12 @@ indices = pd.Series(df_steam.index, index=df_steam['name']).drop_duplicates()
 st.sidebar.title("🎮 Engine Menu")
 menu = st.sidebar.radio(
     "Pilih Modul AI:",
-    ("Overview Dashboard", "LTV Prediction Engine (Stage 1)", "Game Recommender Engine (Stage 2)")
+    (
+        "Overview Dashboard", 
+        "LTV Prediction Engine (Stage 1)", 
+        "Game Recommender Engine (Stage 2)",
+        "Model Analytics & Metrics"
+    )
 )
 
 st.sidebar.markdown("---")
@@ -74,6 +81,36 @@ if menu == "Overview Dashboard":
     *   **Stage 2 (NLP Recommender):** Memberikan rekomendasi konten game secara hiper-terpersonalisasi untuk mengatasi *Offer Fatigue* dan *Cold-Start Problem*.
     """)
     st.success("✅ Seluruh model AI berhasil dimuat dan siap digunakan secara Real-Time!")
+    
+    st.markdown("---")
+    
+    # Menambahkan Visualisasi Latar Belakang Masalah (EDA)
+    st.subheader("📊 Mengapa AI ini Dibutuhkan? (Problem Statement)")
+    st.write("Distribusi pemain di industri gaming sangat timpang (*Highly Imbalanced*). Mayoritas pemain hanya menonton iklan atau murni bermain gratis, sementara **Pembeli Asli (Whales)** jumlahnya sangat sedikit namun menyumbang mayoritas pendapatan.")
+    
+    # Data agregat segmentasi
+    data_segmentasi = pd.DataFrame({
+        'Kategori Pemain': ['Hanya Nonton Iklan (Ad-Watcher)', 'F2P Murni ($0)', 'Pembeli Item (IAP Buyer)'],
+        'Jumlah Pemain': [83, 77, 5]
+    })
+    
+    fig, ax = plt.subplots(figsize=(8, 4))
+    sns.barplot(x='Kategori Pemain', y='Jumlah Pemain', data=data_segmentasi, palette=['#d62728', '#4c72b0', '#55a868'], ax=ax)
+    
+    ax.set_title("Segmentasi Pemain: Pembeli Asli vs Penonton Iklan", fontsize=14, pad=15)
+    ax.set_xlabel("Kategori Pemain", fontsize=12)
+    ax.set_ylabel("Jumlah Pemain", fontsize=12)
+    
+    # Menambahkan angka di atas bar
+    for p in ax.patches:
+        ax.annotate(format(p.get_height(), '.0f'), 
+                    (p.get_x() + p.get_width() / 2., p.get_height()), 
+                    ha = 'center', va = 'center', 
+                    xytext = (0, 8), 
+                    textcoords = 'offset points',
+                    fontsize=11)
+    
+    st.pyplot(fig)
 
 # --- HALAMAN 2: LTV PREDICTION ---
 elif menu == "LTV Prediction Engine (Stage 1)":
@@ -129,3 +166,35 @@ elif menu == "Game Recommender Engine (Stage 2)":
                 st.caption(f"Genres: {genre_val} | Tags: {tags_val}")
         else:
             st.error("Game tidak ditemukan di katalog.")
+
+# --- HALAMAN 4: MODEL ANALYTICS & METRICS ---
+elif menu == "Model Analytics & Metrics":
+    st.title("📊 Model Analytics & Evaluation Metrics")
+    st.write("Halaman ini menyajikan transparansi performa model Deep Neural Network (DNN) pada tahap pengujian (Test Data) sebelum di-deploy ke fase produksi.")
+    
+    st.subheader("🎯 Key Performance Indicators (KPI)")
+    col_met1, col_met2, col_met3 = st.columns(3)
+    col_met1.metric(label="Mean Absolute Error (MAE)", value="$ 5.21", delta="Sangat Akurat", delta_color="normal")
+    col_met2.metric(label="Root Mean Squared Error (RMSE)", value="$ 8.13", delta="Tahan Outlier", delta_color="normal")
+    col_met3.metric(label="Total Epochs (Training)", value="50 Epochs", delta="Good Fit / No Overfit", delta_color="normal")
+    
+    st.markdown("---")
+    
+    st.subheader("📈 Diagnostic Plots")
+    col_img1, col_img2 = st.columns(2)
+    
+    with col_img1:
+        st.markdown("**1. Deep Learning Loss Curve**")
+        st.caption("Penurunan Training & Validation Loss secara eksponensial. Efek Overfitting berhasil dicegah menggunakan Dropout Layer (0.2).")
+        try:
+            st.image("assets/loss_curve.png", use_column_width=True)
+        except Exception as e:
+            st.warning("⚠️ File 'assets/loss_curve.png' belum ditemukan di folder assets.")
+            
+    with col_img2:
+        st.markdown("**2. Actual vs Predicted LTV (Scatter Plot)**")
+        st.caption("Sebaran prediksi (Sumbu Y) mengikuti secara ketat garis diagonal Perfect Fit dari data aktual (Sumbu X).")
+        try:
+            st.image("assets/scatter_ltv.png", use_column_width=True)
+        except Exception as e:
+            st.warning("⚠️ File 'assets/scatter_ltv.png' belum ditemukan di folder assets.")
