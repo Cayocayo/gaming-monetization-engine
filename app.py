@@ -4,13 +4,14 @@ import numpy as np
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os  
 from tensorflow.keras.models import load_model
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 
-# ==========================================
+
 # 1. KONFIGURASI HALAMAN STREAMLIT
-# ==========================================
+
 st.set_page_config(
     page_title="Intelligent Gaming Monetization Engine",
     page_icon="🎮",
@@ -18,9 +19,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ==========================================
+
 # 2. LOAD ARTIFACTS MODEL (Dengan Caching & Dynamic Computation)
-# ==========================================
+
 @st.cache_resource
 def load_models():
     # Load Model DL Tahap 1 (LTV) dari folder models/
@@ -50,9 +51,9 @@ with st.spinner('Memuat Model AI & Database... Silakan tunggu sebentar.'):
 # Membuat Series untuk indices game Steam
 indices = pd.Series(df_steam.index, index=df_steam['name']).drop_duplicates()
 
-# ==========================================
+
 # 3. SIDEBAR & NAVIGASI MENU
-# ==========================================
+
 st.sidebar.title("🎮 Engine Menu")
 menu = st.sidebar.radio(
     "Pilih Modul AI:",
@@ -67,9 +68,9 @@ menu = st.sidebar.radio(
 st.sidebar.markdown("---")
 st.sidebar.info("Final Project Data Science & AI\n**Cahyo Widyonarko**")
 
-# ==========================================
+
 # 4. HALAMAN UTAMA BERDASARKAN MENU
-# ==========================================
+
 
 # --- HALAMAN 1: OVERVIEW ---
 if menu == "Overview Dashboard":
@@ -180,21 +181,26 @@ elif menu == "Model Analytics & Metrics":
     
     st.markdown("---")
     
+    # --- BAGIAN INI YANG DIPERBARUI (Menggunakan os.path absolut) ---
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    loss_curve_path = os.path.join(current_dir, "assets", "loss_curve.png")
+    scatter_ltv_path = os.path.join(current_dir, "assets", "scatter_ltv.png")
+
     st.subheader("📈 Diagnostic Plots")
     col_img1, col_img2 = st.columns(2)
     
     with col_img1:
         st.markdown("**1. Deep Learning Loss Curve**")
         st.caption("Penurunan Training & Validation Loss secara eksponensial. Efek Overfitting berhasil dicegah menggunakan Dropout Layer (0.2).")
-        try:
-            st.image("assets/loss_curve.png", use_column_width=True)
-        except Exception as e:
-            st.warning("⚠️ File 'assets/loss_curve.png' belum ditemukan di folder assets.")
+        if os.path.exists(loss_curve_path):
+            st.image(loss_curve_path, use_container_width=True)
+        else:
+            st.warning(f"⚠️ File tidak ditemukan: {loss_curve_path}")
             
     with col_img2:
         st.markdown("**2. Actual vs Predicted LTV (Scatter Plot)**")
         st.caption("Sebaran prediksi (Sumbu Y) mengikuti secara ketat garis diagonal Perfect Fit dari data aktual (Sumbu X).")
-        try:
-            st.image("assets/scatter_ltv.png", use_column_width=True)
-        except Exception as e:
-            st.warning("⚠️ File 'assets/scatter_ltv.png' belum ditemukan di folder assets.")
+        if os.path.exists(scatter_ltv_path):
+            st.image(scatter_ltv_path, use_container_width=True)
+        else:
+            st.warning(f"⚠️ File tidak ditemukan: {scatter_ltv_path}")
