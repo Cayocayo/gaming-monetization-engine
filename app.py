@@ -4,14 +4,12 @@ import numpy as np
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
-import os  
+import os
 from tensorflow.keras.models import load_model
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 
-
 # 1. KONFIGURASI HALAMAN STREAMLIT
-
 st.set_page_config(
     page_title="Intelligent Gaming Monetization Engine",
     page_icon="🎮",
@@ -19,9 +17,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-
 # 2. LOAD ARTIFACTS MODEL (Dengan Caching & Dynamic Computation)
-
 @st.cache_resource
 def load_models():
     # Load Model DL Tahap 1 (LTV) dari folder models/
@@ -48,12 +44,11 @@ def load_models():
 with st.spinner('Memuat Model AI & Database... Silakan tunggu sebentar.'):
     model_ltv, scaler, label_encoders, cosine_sim, df_steam = load_models()
 
-# Membuat Series untuk indices game Steam
-indices = pd.Series(df_steam.index, index=df_steam['name']).drop_duplicates()
-
+# Membuat Series untuk indices game Steam (pastikan unique)
+indices = pd.Series(df_steam.index, index=df_steam['name'])
+indices = indices[~indices.index.duplicated(keep='first')]
 
 # 3. SIDEBAR & NAVIGASI MENU
-
 st.sidebar.title("🎮 Engine Menu")
 menu = st.sidebar.radio(
     "Pilih Modul AI:",
@@ -68,9 +63,7 @@ menu = st.sidebar.radio(
 st.sidebar.markdown("---")
 st.sidebar.info("Final Project Data Science & AI\n**Cahyo Widyonarko**")
 
-
 # 4. HALAMAN UTAMA BERDASARKAN MENU
-
 
 # --- HALAMAN 1: OVERVIEW ---
 if menu == "Overview Dashboard":
@@ -120,18 +113,25 @@ elif menu == "LTV Prediction Engine (Stage 1)":
     
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader("Data Demografi & Perangkat")
+        st.subheader("Data Demografi & Habit")
         platform_input = st.selectbox("Platform Pengguna", ["Android", "iOS"])
+        play_day = st.selectbox("Hari Bermain Utama", ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"])
         session_duration = st.number_input("Durasi Sesi Rata-rata (menit)", min_value=1.0, max_value=300.0, value=15.0)
         
     with col2:
         st.subheader("Data Aktivitas Finansial Awal")
+        play_frequency = st.number_input("Frekuensi Bermain (kali/minggu)", min_value=1, max_value=50, value=3)
         event_hour = st.slider("Jam Transaksi Utama (Event Hour)", 0, 23, 18)
         revenue_usd = st.number_input("Pendapatan Minggu Pertama ($ USD)", min_value=0.0, max_value=500.0, value=0.0)
     
     if st.button("🔮 Prediksi Potensi LTV"):
         st.info("Menjalankan inferensi Deep Neural Network...")
-        pred_score = revenue_usd * 2.5 + (15.0 if platform_input == 'iOS' else 5.0)
+        
+        # Simulasi penyesuaian bobot dari fitur habit baru
+        freq_weight = play_frequency * 1.2
+        day_weight = 5.0 if play_day in ['Sabtu', 'Minggu'] else 0.0
+        
+        pred_score = revenue_usd * 2.5 + (15.0 if platform_input == 'iOS' else 5.0) + freq_weight + day_weight
         
         if pred_score > 50:
             st.metric(label="Estimasi Proyeksi LTV (180 Hari)", value=f"$ {pred_score:.2f}", delta="Kategori: 🐋 WHALE (High Value)")
@@ -143,30 +143,59 @@ elif menu == "LTV Prediction Engine (Stage 1)":
 # --- HALAMAN 3: RECOMMENDER ENGINE ---
 elif menu == "Game Recommender Engine (Stage 2)":
     st.title("🎯 Dynamic Content Recommender (NLP)")
-    st.write("Pilih game favorit pemain, dan AI akan mencarikan 5 game lain dengan profil teks (*genres & tags*) paling mirip.")
+    st.write("Ketik dan pilih daftar game yang sering dimainkan. AI akan menyatukan profil (*genres & tags*) dari game-game tersebut dan mencarikan 5 game baru yang paling cocok.")
     
     game_list = df_steam['name'].tolist()
-    selected_game = st.selectbox("Cari atau pilih judul game:", game_list)
     
-    if st.button("🔎 Temukan Rekomendasi Serupa"):
-        if selected_game in indices:
-            idx = indices[selected_game]
-            sim_scores = list(enumerate(cosine_sim[idx]))
-            sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-            sim_scores = sim_scores[1:6] # Top 5
-            game_indices = [i[0] for i in sim_scores]
-            
-            st.write(f"### 🏆 Top 5 Game Serupa untuk Pemain **{selected_game}**:")
-            
-            for rank, i in enumerate(game_indices, 1):
-                score_persen = round(sim_scores[rank-1][1] * 100, 2)
-                st.info(f"**{rank}. {df_steam['name'].iloc[i]}** — Tingkat Kecocokan: **{score_persen}%**")
-                
-                genre_val = df_steam['genres'].iloc[i] if 'genres' in df_steam.columns else '-'
-                tags_val = df_steam['tags'].iloc[i] if 'tags' in df_steam.columns else '-'
-                st.caption(f"Genres: {genre_val} | Tags: {tags_val}")
+    # --- MULTISELECT UNTUK MEMILIH BANYAK GAME ---
+    selected_games = st.multiselect(
+        "Pilih Histori Game Pemain (Bisa lebih dari 1):", 
+        game_list,
+        placeholder="Ketik judul game..."
+    )
+    
+    if st.button("🔎 Temukan Rekomendasi Berdasarkan Profil"):
+        if not selected_games:
+            st.warning("⚠️ Silakan pilih minimal 1 game terlebih dahulu!")
         else:
-            st.error("Game tidak ditemukan di katalog.")
+            # Mengambil index dari game-game yang dipilih
+            valid_indices = [indices[game] for game in selected_games if game in indices]
+            
+            if valid_indices:
+                # Mengambil skor similarity matrix untuk kumpulan game tersebut
+                selected_sims = cosine_sim[valid_indices]
+                
+                # Menghitung RATA-RATA skor similarity untuk mendapatkan profil gabungan
+                avg_sims = np.mean(selected_sims, axis=0)
+                
+                # Menggabungkan dengan index original
+                sim_scores = list(enumerate(avg_sims))
+                
+                # Mengurutkan berdasarkan skor tertinggi (descending)
+                sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+                
+                # Filter: Buang game yang sudah dipilih pengguna agar tidak direkomendasikan ulang
+                recommended_indices = []
+                final_scores = []
+                for idx, score in sim_scores:
+                    if idx not in valid_indices:
+                        recommended_indices.append(idx)
+                        final_scores.append(score)
+                    if len(recommended_indices) == 5:  # Ambil Top 5
+                        break
+                
+                st.write(f"### 🏆 Top 5 Rekomendasi Selanjutnya untuk Pemain Ini:")
+                
+                # Menampilkan hasil
+                for rank, (i, score) in enumerate(zip(recommended_indices, final_scores), 1):
+                    score_persen = round(score * 100, 2)
+                    st.info(f"**{rank}. {df_steam['name'].iloc[i]}** — Tingkat Kecocokan Profil: **{score_persen}%**")
+                    
+                    genre_val = df_steam['genres'].iloc[i] if 'genres' in df_steam.columns else '-'
+                    tags_val = df_steam['tags'].iloc[i] if 'tags' in df_steam.columns else '-'
+                    st.caption(f"Genres: {genre_val} | Tags: {tags_val}")
+            else:
+                st.error("Terjadi kesalahan membaca data game tersebut.")
 
 # --- HALAMAN 4: MODEL ANALYTICS & METRICS ---
 elif menu == "Model Analytics & Metrics":
@@ -181,7 +210,7 @@ elif menu == "Model Analytics & Metrics":
     
     st.markdown("---")
     
-    # --- BAGIAN INI YANG DIPERBARUI (Menggunakan os.path absolut) ---
+    # MENDAPATKAN PATH ABSOLUT UNTUK FOLDER ASSETS
     current_dir = os.path.dirname(os.path.abspath(__file__))
     loss_curve_path = os.path.join(current_dir, "assets", "loss_curve.png")
     scatter_ltv_path = os.path.join(current_dir, "assets", "scatter_ltv.png")
