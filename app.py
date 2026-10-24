@@ -9,7 +9,9 @@ from tensorflow.keras.models import load_model
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 
+# ==========================================
 # 1. KONFIGURASI HALAMAN STREAMLIT
+# ==========================================
 st.set_page_config(
     page_title="Intelligent Gaming Monetization Engine",
     page_icon="🎮",
@@ -17,10 +19,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. LOAD ARTIFACTS MODEL (Dengan Caching & Dynamic Computation)
+# ==========================================
+# 2. LOAD ARTIFACTS MODEL
+# ==========================================
 @st.cache_resource
 def load_models():
-    # Load Model DL Tahap 1 (LTV) dari folder models/
+    # Load Model DL Tahap 1 (LTV)
     model_ltv = load_model('models/ltv_dl_model.keras')
     scaler = joblib.load('models/ltv_scaler.pkl')
     label_encoders = joblib.load('models/ltv_label_encoders.pkl')
@@ -28,9 +32,8 @@ def load_models():
     # Load Dataset Steam Bersih
     df_steam = pd.read_pickle('models/steam_games_clean.pkl')
     
-    # Hitung Cosine Similarity secara dinamis untuk menghindari file pickle berukuran >100MB
+    # Hitung Cosine Similarity secara dinamis
     tfidf = TfidfVectorizer(stop_words='english')
-    # Pastikan kolom teks digabungkan dengan aman
     if 'genres' in df_steam.columns and 'tags' in df_steam.columns:
         df_steam['combined_features'] = df_steam['genres'].fillna('') + ' ' + df_steam['tags'].fillna('')
     else:
@@ -44,11 +47,12 @@ def load_models():
 with st.spinner('Memuat Model AI & Database... Silakan tunggu sebentar.'):
     model_ltv, scaler, label_encoders, cosine_sim, df_steam = load_models()
 
-# Membuat Series untuk indices game Steam (pastikan unique)
 indices = pd.Series(df_steam.index, index=df_steam['name'])
 indices = indices[~indices.index.duplicated(keep='first')]
 
+# ==========================================
 # 3. SIDEBAR & NAVIGASI MENU
+# ==========================================
 st.sidebar.title("🎮 Engine Menu")
 menu = st.sidebar.radio(
     "Pilih Modul AI:",
@@ -63,9 +67,10 @@ menu = st.sidebar.radio(
 st.sidebar.markdown("---")
 st.sidebar.info("Final Project Data Science & AI\n**Cahyo Widyonarko**")
 
+# ==========================================
 # 4. HALAMAN UTAMA BERDASARKAN MENU
+# ==========================================
 
-# --- HALAMAN 1: OVERVIEW ---
 if menu == "Overview Dashboard":
     st.title("📈 Intelligent Gaming Monetization Engine")
     st.markdown("""
@@ -77,12 +82,9 @@ if menu == "Overview Dashboard":
     st.success("✅ Seluruh model AI berhasil dimuat dan siap digunakan secara Real-Time!")
     
     st.markdown("---")
-    
-    # Menambahkan Visualisasi Latar Belakang Masalah (EDA)
     st.subheader("📊 Mengapa AI ini Dibutuhkan? (Problem Statement)")
     st.write("Distribusi pemain di industri gaming sangat timpang (*Highly Imbalanced*). Mayoritas pemain hanya menonton iklan atau murni bermain gratis, sementara **Pembeli Asli (Whales)** jumlahnya sangat sedikit namun menyumbang mayoritas pendapatan.")
     
-    # Data agregat segmentasi
     data_segmentasi = pd.DataFrame({
         'Kategori Pemain': ['Hanya Nonton Iklan (Ad-Watcher)', 'F2P Murni ($0)', 'Pembeli Item (IAP Buyer)'],
         'Jumlah Pemain': [83, 77, 5]
@@ -90,23 +92,16 @@ if menu == "Overview Dashboard":
     
     fig, ax = plt.subplots(figsize=(8, 4))
     sns.barplot(x='Kategori Pemain', y='Jumlah Pemain', data=data_segmentasi, palette=['#d62728', '#4c72b0', '#55a868'], ax=ax)
-    
     ax.set_title("Segmentasi Pemain: Pembeli Asli vs Penonton Iklan", fontsize=14, pad=15)
     ax.set_xlabel("Kategori Pemain", fontsize=12)
     ax.set_ylabel("Jumlah Pemain", fontsize=12)
-    
-    # Menambahkan angka di atas bar
     for p in ax.patches:
         ax.annotate(format(p.get_height(), '.0f'), 
                     (p.get_x() + p.get_width() / 2., p.get_height()), 
-                    ha = 'center', va = 'center', 
-                    xytext = (0, 8), 
-                    textcoords = 'offset points',
-                    fontsize=11)
-    
+                    ha = 'center', va = 'center', xytext = (0, 8), 
+                    textcoords = 'offset points', fontsize=11)
     st.pyplot(fig)
 
-# --- HALAMAN 2: LTV PREDICTION ---
 elif menu == "LTV Prediction Engine (Stage 1)":
     st.title("💰 Player LTV Prediction (Deep Learning)")
     st.write("Masukkan parameter aktivitas awal pemain untuk memprediksi potensi pengeluaran mereka di masa depan.")
@@ -126,13 +121,32 @@ elif menu == "LTV Prediction Engine (Stage 1)":
     
     if st.button("🔮 Prediksi Potensi LTV"):
         st.info("Menjalankan inferensi Deep Neural Network...")
-        
-        # Simulasi penyesuaian bobot dari fitur habit baru
-        freq_weight = play_frequency * 1.2
-        day_weight = 5.0 if play_day in ['Sabtu', 'Minggu'] else 0.0
-        
-        pred_score = revenue_usd * 2.5 + (15.0 if platform_input == 'iOS' else 5.0) + freq_weight + day_weight
-        
+        try:
+            input_data = pd.DataFrame({
+                'Platform': [platform_input],
+                'Play_Day': [play_day],
+                'Session_Duration': [session_duration],
+                'Play_Frequency': [play_frequency],
+                'Event_Hour': [event_hour],
+                'D1_Revenue': [revenue_usd]
+            })
+            
+            if 'Platform' in label_encoders:
+                input_data['Platform'] = label_encoders['Platform'].transform(input_data['Platform'])
+            if 'Play_Day' in label_encoders:
+                input_data['Play_Day'] = label_encoders['Play_Day'].transform(input_data['Play_Day'])
+            
+            input_scaled = scaler.transform(input_data)
+            pred_score_array = model_ltv.predict(input_scaled)
+            pred_score = float(pred_score_array[0][0])
+            
+            if pred_score < 0:
+                pred_score = 0.0
+                
+        except Exception as e:
+            st.error(f"Terjadi kesalahan model: {e}. Pastikan parameter sesuai dengan fitur training Anda.")
+            pred_score = 0.0
+
         if pred_score > 50:
             st.metric(label="Estimasi Proyeksi LTV (180 Hari)", value=f"$ {pred_score:.2f}", delta="Kategori: 🐋 WHALE (High Value)")
             st.warning("🎯 **Rekomendasi Tindakan:** Alokasikan promosi VIP eksklusif dan item premium secara langsung!")
@@ -140,68 +154,44 @@ elif menu == "LTV Prediction Engine (Stage 1)":
             st.metric(label="Estimasi Proyeksi LTV (180 Hari)", value=f"$ {pred_score:.2f}", delta="Kategori: 👤 Kasual / Ad-Watcher")
             st.info("💡 **Rekomendasi Tindakan:** Pertahankan penayangan iklan berhadiah (Ad Rewards), hindari penawaran barang mahal.")
 
-# --- HALAMAN 3: RECOMMENDER ENGINE ---
 elif menu == "Game Recommender Engine (Stage 2)":
     st.title("🎯 Dynamic Content Recommender (NLP)")
     st.write("Ketik dan pilih daftar game yang sering dimainkan. AI akan menyatukan profil (*genres & tags*) dari game-game tersebut dan mencarikan 5 game baru yang paling cocok.")
     
     game_list = df_steam['name'].tolist()
-    
-    # --- MULTISELECT UNTUK MEMILIH BANYAK GAME ---
-    selected_games = st.multiselect(
-        "Pilih Histori Game Pemain (Bisa lebih dari 1):", 
-        game_list,
-        placeholder="Ketik judul game..."
-    )
+    selected_games = st.multiselect("Pilih Histori Game Pemain (Bisa lebih dari 1):", game_list, placeholder="Ketik judul game...")
     
     if st.button("🔎 Temukan Rekomendasi Berdasarkan Profil"):
         if not selected_games:
             st.warning("⚠️ Silakan pilih minimal 1 game terlebih dahulu!")
         else:
-            # Mengambil index dari game-game yang dipilih
             valid_indices = [indices[game] for game in selected_games if game in indices]
-            
             if valid_indices:
-                # Mengambil skor similarity matrix untuk kumpulan game tersebut
                 selected_sims = cosine_sim[valid_indices]
-                
-                # Menghitung RATA-RATA skor similarity untuk mendapatkan profil gabungan
                 avg_sims = np.mean(selected_sims, axis=0)
-                
-                # Menggabungkan dengan index original
                 sim_scores = list(enumerate(avg_sims))
-                
-                # Mengurutkan berdasarkan skor tertinggi (descending)
                 sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
                 
-                # Filter: Buang game yang sudah dipilih pengguna agar tidak direkomendasikan ulang
                 recommended_indices = []
                 final_scores = []
                 for idx, score in sim_scores:
                     if idx not in valid_indices:
                         recommended_indices.append(idx)
                         final_scores.append(score)
-                    if len(recommended_indices) == 5:  # Ambil Top 5
+                    if len(recommended_indices) == 5:
                         break
                 
-                st.write(f"### 🏆 Top 5 Rekomendasi Selanjutnya untuk Pemain Ini:")
-                
-                # Menampilkan hasil
+                st.write(f"### 🏆 Top 5 Rekomendasi Selanjutnya:")
                 for rank, (i, score) in enumerate(zip(recommended_indices, final_scores), 1):
                     score_persen = round(score * 100, 2)
-                    st.info(f"**{rank}. {df_steam['name'].iloc[i]}** — Tingkat Kecocokan Profil: **{score_persen}%**")
-                    
+                    st.info(f"**{rank}. {df_steam['name'].iloc[i]}** — Kecocokan: **{score_persen}%**")
                     genre_val = df_steam['genres'].iloc[i] if 'genres' in df_steam.columns else '-'
-                    tags_val = df_steam['tags'].iloc[i] if 'tags' in df_steam.columns else '-'
-                    st.caption(f"Genres: {genre_val} | Tags: {tags_val}")
+                    st.caption(f"Genres: {genre_val}")
             else:
                 st.error("Terjadi kesalahan membaca data game tersebut.")
 
-# --- HALAMAN 4: MODEL ANALYTICS & METRICS ---
 elif menu == "Model Analytics & Metrics":
     st.title("📊 Model Analytics & Evaluation Metrics")
-    st.write("Halaman ini menyajikan transparansi performa model Deep Neural Network (DNN) pada tahap pengujian (Test Data) sebelum di-deploy ke fase produksi.")
-    
     st.subheader("🎯 Key Performance Indicators (KPI)")
     col_met1, col_met2, col_met3 = st.columns(3)
     col_met1.metric(label="Mean Absolute Error (MAE)", value="$ 5.21", delta="Sangat Akurat", delta_color="normal")
@@ -209,27 +199,17 @@ elif menu == "Model Analytics & Metrics":
     col_met3.metric(label="Total Epochs (Training)", value="50 Epochs", delta="Good Fit / No Overfit", delta_color="normal")
     
     st.markdown("---")
-    
-    # MENDAPATKAN PATH ABSOLUT UNTUK FOLDER ASSETS
     current_dir = os.path.dirname(os.path.abspath(__file__))
     loss_curve_path = os.path.join(current_dir, "assets", "loss_curve.png")
     scatter_ltv_path = os.path.join(current_dir, "assets", "scatter_ltv.png")
 
     st.subheader("📈 Diagnostic Plots")
     col_img1, col_img2 = st.columns(2)
-    
     with col_img1:
         st.markdown("**1. Deep Learning Loss Curve**")
-        st.caption("Penurunan Training & Validation Loss secara eksponensial. Efek Overfitting berhasil dicegah menggunakan Dropout Layer (0.2).")
         if os.path.exists(loss_curve_path):
             st.image(loss_curve_path, use_container_width=True)
-        else:
-            st.warning(f"⚠️ File tidak ditemukan: {loss_curve_path}")
-            
     with col_img2:
-        st.markdown("**2. Actual vs Predicted LTV (Scatter Plot)**")
-        st.caption("Sebaran prediksi (Sumbu Y) mengikuti secara ketat garis diagonal Perfect Fit dari data aktual (Sumbu X).")
+        st.markdown("**2. Actual vs Predicted LTV**")
         if os.path.exists(scatter_ltv_path):
             st.image(scatter_ltv_path, use_container_width=True)
-        else:
-            st.warning(f"⚠️ File tidak ditemukan: {scatter_ltv_path}")

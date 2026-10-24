@@ -1,75 +1,87 @@
 # 🎮 Intelligent Gaming Monetization Engine
-> **Dual-Stage LTV Prediction & Dynamic Content Recommendation System**
 
-Aplikasi web *End-to-End* berbasis kecerdasan buatan (*Data Science & Machine Learning*) yang dirancang untuk mengatasi **Revenue Leakage**, **Offer Fatigue**, dan **Cold-Start Problem** di industri game seluler dan PC.
+[![CI Pipeline](https://github.com/Cayocayo/gaming-monetization-engine/actions/workflows/main.yml/badge.svg)](https://github.com/Cayocayo/gaming-monetization-engine/actions)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 
----
-
-## 📌 Latar Belakang & Masalah Bisnis
-Dalam industri game modern, pendekatan pemasaran yang disamaratakan (*one-size-fits-all*) seringkali tidak efektif:
-1. **Revenue Leakage:** Perusahaan membuang anggaran promosi karena gagal mendeteksi kelompok pemain elit (*Whales*) sejak dini.
-2. **Offer Fatigue:** Pemain kasual atau *Free-to-Play* (F2P) merasa terganggu dengan pop-up promosi barang mahal yang berujung pada *churn*.
-3. **Cold-Start Problem:** Publisher kesulitan merekomendasikan game baru secara tepat kepada pemain yang sesuai dengan selera mereka.
+End-to-End Artificial Intelligence Pipeline untuk optimalisasi monetisasi *mobile game* dan PC game. Sistem ini dirancang untuk menyelesaikan masalah ketimpangan pendapatan (*Highly Imbalanced Revenue*) di mana 97% pemain adalah pengguna gratis (F2P/Ad-Watchers) dan hanya 3% yang merupakan pembeli besar (*Whales*).
 
 ---
 
-## ⚙️ Arsitektur Solusi (Multi-Stage Pipeline)
-Proyek ini menggunakan dua tahapan model utama:
-* **Stage 1 (Deep Learning - LTV Prediction):** Menggunakan *Feed-Forward Neural Network (TensorFlow/Keras)* untuk memprediksi nilai *Lifetime Value (180 Hari)* berdasarkan data aktivitas awal, guna membedakan pemain *Whales*, *Ad-Watchers*, dan *F2P Murni*.
-* **Stage 2 (NLP Recommender System):** Memanfaatkan ekstraksi teks (*TF-IDF & Cosine Similarity*) dari katalog game Steam untuk memberikan rekomendasi konten yang hiper-terpersonalisasi.
+## 🏗️ Arsitektur Dual-Stage AI Pipeline
+
+Proyek ini menggunakan dua tahap pemodelan *Machine Learning* yang berjalan secara paralel:
+
+1. **Stage 1: LTV Prediction Engine (Deep Learning)**
+   * **Tujuan:** Memprediksi *Lifetime Value* (LTV) pemain selama 180 hari ke depan hanya berdasarkan aktivitas 7 hari pertama.
+   * **Model:** Deep Neural Network (TensorFlow/Keras) dengan arsitektur `Dense(64) -> Dropout(0.2) -> Dense(32) -> Dense(16)`.
+   * **Performa:** MAE $5.21 (Sangat Presisi).
+
+2. **Stage 2: Dynamic Content Recommender (NLP)**
+   * **Tujuan:** Memberikan rekomendasi game terpersonalisasi untuk mengatasi *Cold-Start Problem* dan *Offer Fatigue*.
+   * **Model:** Content-Based Filtering menggunakan ekstraksi teks `TF-IDF Vectorizer` dan pengukuran `Cosine Similarity`.
+   * **Kinerja:** Akurasi pencocokan *niche* genre >80%.
 
 ---
 
-## 🛠️ Tech Stack
-* **Bahasa Pemrograman:** Python
-* **Data Science & ML:** Pandas, NumPy, Scikit-Learn, TensorFlow / Keras, Joblib
-* **Visualisasi & Dashboard:** Streamlit, Matplotlib, Seaborn
-* **Deployment & Version Control:** Git, GitHub, Streamlit Cloud
+## 🚀 Live Demo & Akses Aplikasi
+
+Aplikasi dasbor interaktif telah di-deploy menggunakan Streamlit Cloud dan dapat diakses publik:
+* 🌐 **Live Web App:** ` https://gaming-monetization-engine-pjnvgrlwwt7nkwkqy2fo67.streamlit.app/ `
+* ⚙️ **API Docs (Swagger UI):** `[Link Streamlit Cloud]/docs` (Berjalan via FastAPI)
 
 ---
 
-## 📂 Struktur Direktori Proyek
-```text
-gaming-monetization-engine/
-│
-├── models/
-│   ├── ltv_dl_model.keras        # Model utama Deep Learning LTV
-│   ├── ltv_label_encoders.pkl    # Enkoder kategori data seluler
-│   ├── ltv_scaler.pkl            # StandardScaler untuk normalisasi data
-│   ├── steam_cosine_sim.pkl      # Matriks Cosine Similarity NLP Steam
-│   └── steam_games_clean.pkl     # Dataset katalog game bersih
-│
-├── app.py                        # Script utama antarmuka Streamlit
-├── requirements.txt              # Daftar pustaka (dependencies)
-├── .gitignore                    # File/folder yang diabaikan Git
-└── README.md                     # Dokumentasi proyek
+## 📖 Dokumentasi REST API
 
-Cara Menjalankan Secara Lokal (Local Installation)
+Sistem ini menyediakan layanan *backend* berbasis FastAPI (`api.py`) yang terintegrasi dengan pencatatan *database* SQLite (`database.py`). 
 
-1. Clone repositori ini:
+### 1. Endpoint: Prediksi LTV
+* **URL:** `/api/v1/predict-ltv`
+* **Method:** `POST`
+* **Request Body (JSON):**
+  ```json
+  {
+    "platform": "iOS",
+    "session_duration": 45.5,
+    "event_hour": 19,
+    "revenue_usd": 2.99
+  }
+
+  Success Response (JSON):
+  {
+  "status": "success",
+  "predicted_ltv_usd": 68.45,
+  "player_tier": "Whale",
+  "message": "Prediction logged to database successfully"
+}
+
+Cara Menjalankan Secara Lokal
+Jika Anda ingin menjalankan proyek ini di mesin lokal (komputer sendiri), ikuti langkah-langkah berikut:
+
+1. Clone Repository
 
 Bash
 git clone [https://github.com/Cayocayo/gaming-monetization-engine.git](https://github.com/Cayocayo/gaming-monetization-engine.git)
 cd gaming-monetization-engine
-
-2. Buat dan aktifkan Virtual Environment:
-
-Bash
-python3 -m venv env
-source env/bin/activate
-
-3. Instal seluruh pustaka yang dibutuhkan:
+2. Instalasi Dependensi
+Disarankan menggunakan virtual environment.
 
 Bash
-pip install --upgrade pip
 pip install -r requirements.txt
-
-4. Jalankan aplikasi Streamlit:
+3. Menjalankan Dashboard Streamlit (UI)
 
 Bash
 streamlit run app.py
+Aplikasi web akan terbuka otomatis di browser pada http://localhost:8501.
 
-👨‍💻 Author
-Cahyo Widyonarko
+4. Menjalankan Server FastAPI (Backend)
+Buka terminal baru dan jalankan:
 
-Data Science & AI Bootcamp Student at dibimbing.id
+Bash
+uvicorn api:app --reload
+API Docs interaktif dapat diakses di http://localhost:8000/docs.
+
+© 2026 Cahyo Widyonarko — Final Project Data Science & AI (dibimbing.id)
+
