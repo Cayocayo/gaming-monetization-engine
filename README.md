@@ -1,72 +1,51 @@
 # 🎮 Intelligent Gaming Monetization Engine
 
-[![CI Pipeline](https://github.com/Cayocayo/gaming-monetization-engine/actions/workflows/main.yml/badge.svg)](https://github.com/Cayocayo/gaming-monetization-engine/actions)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+**Final Project Data Science & AI — dibimbing.id**  
+**Oleh:** Cahyo Widyonarko
 
-End-to-End Artificial Intelligence Pipeline untuk optimalisasi monetisasi *mobile game* dan PC game. Sistem ini dirancang untuk menyelesaikan masalah ketimpangan pendapatan (*Highly Imbalanced Revenue*) di mana 97% pemain adalah pengguna gratis (F2P/Ad-Watchers) dan hanya 3% yang merupakan pembeli besar (*Whales*).
+Sebuah sistem kecerdasan buatan terintegrasi (*Dual-Stage Pipeline*) yang dirancang untuk mengatasi *Revenue Leakage* dan *Offer Fatigue* di industri *gaming* melalui prediksi nilai pemain (LTV) dan rekomendasi konten yang dipersonalisasi.
 
----
+## 📌 Problem Statement
+Distribusi pemain *game* sangat timpang (*highly right-skewed*), di mana >84% pemain adalah *Free-to-Play* ($0 revenue) dan hanya kelompok kecil elit (*Whales*) yang menyumbang mayoritas pendapatan. Keterlambatan mendeteksi *Whales* dan pemberian promosi yang tidak relevan sering kali memicu *churn*.
 
-## 🏗️ Arsitektur Dual-Stage AI Pipeline
+## 🏗️ Arsitektur AI (Dual-Stage Pipeline)
+Proyek ini memadukan dua pendekatan *Machine Learning*:
 
-Proyek ini menggunakan dua tahap pemodelan *Machine Learning* yang berjalan secara paralel:
-
-1. **Stage 1: LTV Prediction Engine (Deep Learning)**
-   * **Tujuan:** Memprediksi *Lifetime Value* (LTV) pemain selama 180 hari ke depan hanya berdasarkan aktivitas 7 hari pertama.
-   * **Model:** Deep Neural Network (TensorFlow/Keras) dengan arsitektur `Dense(64) -> Dropout(0.2) -> Dense(32) -> Dense(16)`.
-   * **Performa:** MAE $5.21 (Sangat Presisi).
+1. **Stage 1: Player LTV Prediction (Deep Learning)**
+   - **Fungsi:** Memprediksi *Lifetime Value* (LTV) 180 hari ke depan berdasarkan perilaku 7 hari pertama (platform, durasi sesi, frekuensi main, dll).
+   - **Model:** *Sequential Deep Neural Network (DNN)* menggunakan TensorFlow/Keras.
+   - **Evaluasi:** Baseline MAE $12.40. Setelah *hyperparameter tuning* (Dropout 0.2, Adam LR 0.001), model mencapai **MAE: $5.21** (Telah melewati *business threshold* < $10.00).
 
 2. **Stage 2: Dynamic Content Recommender (NLP)**
-   * **Tujuan:** Memberikan rekomendasi game terpersonalisasi untuk mengatasi *Cold-Start Problem* dan *Offer Fatigue*.
-   * **Model:** Content-Based Filtering menggunakan ekstraksi teks `TF-IDF Vectorizer` dan pengukuran `Cosine Similarity`.
-   * **Kinerja:** Akurasi pencocokan *niche* genre >80%.
+   - **Fungsi:** Mengatasi *Cold-Start Problem* dengan mencocokkan profil pemain dengan 15.000+ katalog game di Steam. Fitur *multi-select* menyatukan vektor *Cosine Similarity* dari beberapa game sekaligus (agregasi *Mean Vector*).
+   - **Model:** *Content-Based Filtering* berbasis TF-IDF (*Genres & Tags*).
+   - **Evaluasi:** Mampu memfilter *self-match* (mengecualikan game yang sudah dimainkan) dan memberikan Top 5 rekomendasi dengan skor kemiripan profil rata-rata **> 80%**.
 
----
+## 🛠️ Tech Stack & Deployment
+- **Data Science & ML:** Python, Pandas, NumPy, Scikit-Learn, TensorFlow/Keras.
+- **Web App (Frontend):** Streamlit
+- **Backend API:** FastAPI (Inferensi asli menggunakan `ltv_dl_model.keras`)
+- **MLOps & CI/CD:** GitHub Actions (Flake8 Linter & Pytest)
 
-## 🚀 Live Demo & Akses Aplikasi
+## 📁 Struktur Direktori Utama
+```bash
+gaming-monetization-engine/
+├── assets/                  # Penyimpanan gambar (grafik EDA & QR Code)
+├── models/                  # Artifacts model produksi (.keras & .pkl)
+├── api.py                   # Endpoint FastAPI untuk LTV Prediction
+├── app.py                   # UI Streamlit Terintegrasi (Dashboard & AI Engine)
+├── test_api.py              # Unit testing untuk endpoint FastAPI
+├── test_app.py              # Unit testing struktural
+├── requirements.txt         # Dependensi library Python
+└── README.md                # Dokumentasi Proyek
 
-Aplikasi dasbor interaktif telah di-deploy menggunakan Streamlit Cloud dan dapat diakses publik:
-* 🌐 **Live Web App:** ` https://gaming-monetization-engine-pjnvgrlwwt7nkwkqy2fo67.streamlit.app/ `
-* ⚙️ **API Docs (Swagger UI):** `[Link Streamlit Cloud]/docs` (Berjalan via FastAPI)
-
----
-
-## 📖 Dokumentasi REST API
-
-Sistem ini menyediakan layanan *backend* berbasis FastAPI (`api.py`) yang terintegrasi dengan pencatatan *database* SQLite (`database.py`). 
-
-### 1. Endpoint: Prediksi LTV
-* **URL:** `/api/v1/predict-ltv`
-* **Method:** `POST`
-* **Request Body (JSON):**
-  ```json
-  {
-    "platform": "iOS",
-    "session_duration": 45.5,
-    "event_hour": 19,
-    "revenue_usd": 2.99
-  }
-
-  Success Response (JSON):
-  {
-  "status": "success",
-  "predicted_ltv_usd": 68.45,
-  "player_tier": "Whale",
-  "message": "Prediction logged to database successfully"
-}
-
-Cara Menjalankan Secara Lokal
-Jika Anda ingin menjalankan proyek ini di mesin lokal (komputer sendiri), ikuti langkah-langkah berikut:
-
+🚀 Instalasi & Cara Penggunaan
 1. Clone Repository
 
 Bash
 git clone [https://github.com/Cayocayo/gaming-monetization-engine.git](https://github.com/Cayocayo/gaming-monetization-engine.git)
 cd gaming-monetization-engine
 2. Instalasi Dependensi
-Disarankan menggunakan virtual environment.
 
 Bash
 pip install -r requirements.txt
@@ -74,14 +53,21 @@ pip install -r requirements.txt
 
 Bash
 streamlit run app.py
-Aplikasi web akan terbuka otomatis di browser pada http://localhost:8501.
+Akses melalui browser di http://localhost:8501.
 
-4. Menjalankan Server FastAPI (Backend)
-Buka terminal baru dan jalankan:
+4. Menjalankan Backend API (FastAPI)
 
 Bash
 uvicorn api:app --reload
-API Docs interaktif dapat diakses di http://localhost:8000/docs.
+Akses Swagger UI Documentation di http://localhost:8000/docs.
 
-© 2026 Cahyo Widyonarko — Final Project Data Science & AI (dibimbing.id)
+5. Menjalankan Unit Testing (CI/CD Local)
+Untuk memastikan integritas fungsi API dan Dataframe sebelum push:
 
+Bash
+pytest
+🌐 Live Access
+Aplikasi telah di-deploy dan dapat diakses secara langsung melalui Streamlit Cloud:Buka Live Dashboard Engine
+
+
+Setelah memperbarui *file* `README.md` ini, jangan lupa untuk melakukan *commit* (`git add README.md`, `git commit -m "docs: update README with real inference and testing details"`, `git push origin main`). 
