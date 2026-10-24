@@ -26,26 +26,26 @@ class PlayerData(BaseModel):
 @app.post("/predict-ltv")
 def predict_ltv(data: PlayerData):
     try:
-        # 1. Ubah input JSON menjadi DataFrame
-        input_data = pd.DataFrame([data.dict()])
+        # Menggunakan model_dump() untuk versi Pydantic terbaru
+        input_data = pd.DataFrame([data.model_dump()])
         
-        # 2. Encode categorical data
+        # Encode categorical data
         if 'Platform' in label_encoders:
             input_data['Platform'] = label_encoders['Platform'].transform(input_data['Platform'])
         if 'Play_Day' in label_encoders:
             input_data['Play_Day'] = label_encoders['Play_Day'].transform(input_data['Play_Day'])
             
-        # 3. Scaling
+        # Scaling
         input_scaled = scaler.transform(input_data)
         
-        # 4. Prediksi
+        # Prediksi
         pred_score_array = model_ltv.predict(input_scaled)
         pred_score = float(pred_score_array[0][0])
         
         if pred_score < 0:
             pred_score = 0.0
             
-        # 5. Tentukan Kategori
+        # Tentukan Kategori
         kategori = "Whale (High Value)" if pred_score > 50 else "Kasual / Ad-Watcher"
         
         return {

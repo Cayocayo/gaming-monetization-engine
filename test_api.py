@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from api import app  # pastikan nama file api Anda adalah api.py
+from api import app
 
 client = TestClient(app)
 
@@ -17,10 +17,10 @@ def test_predict_ltv_endpoint():
     # Kirim request POST ke endpoint
     response = client.post("/predict-ltv", json=payload)
     
-    # Pastikan API merespons dengan status 200 OK
-    assert response.status_code == 200
+    # Pastikan API merespons dengan status 200 OK, cetak error jika gagal
+    assert response.status_code == 200, f"API Error Output: {response.text}"
     
-    # Pastikan response memiliki key "predicted_ltv_180_days"
+    # Pastikan response memiliki key yang diharapkan
     data = response.json()
     assert "predicted_ltv_180_days" in data
     assert "player_segment" in data
